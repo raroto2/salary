@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>월별급여현황 시스템 v16.5</title>
+    <title>월별급여현황 시스템 v16.6</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -54,9 +54,10 @@
         .st-value-minus { text-align: right; font-weight: 800; color: #dc2626; font-size: 12px; background-color: #fef2f2; }
         .st-value-mix { text-align: right; font-weight: 800; color: #0d9488; font-size: 12px; background-color: #f0fdfa; }
 
-        /* 입력 테이블 디자인 (모바일 터치 크기 증가) */
-        .excel-input-table th { background-color: #f1f5f9; color: #475569; font-weight: 700; text-align: center; font-size: 11px; border: 1px solid #e2e8f0; white-space: nowrap; padding: 12px 6px; }
-        .excel-input-table td { border: 1px solid #e2e8f0; padding: 6px; white-space: nowrap; height: 46px; vertical-align: middle; }
+        /* [요구사항 2] 틀 고정을 지원하는 입력 테이블 디자인 */
+        .excel-input-table { border-collapse: separate; border-spacing: 0; }
+        .excel-input-table th { background-color: #f1f5f9; color: #475569; font-weight: 700; text-align: center; font-size: 11px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; white-space: nowrap; padding: 12px 6px; }
+        .excel-input-table td { border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 6px; white-space: nowrap; height: 46px; vertical-align: middle; }
         .excel-input-table input { 
             width: 100%; 
             text-align: right; 
@@ -71,6 +72,32 @@
         }
         .excel-input-table input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
+        /* 틀고정 Sticky 스타일 정의 */
+        .sticky-col-1 {
+            position: sticky !important;
+            left: 0px !important;
+            z-index: 20;
+            background-color: #f8fafc !important; /* 견고한 배경 불투명도 */
+            box-shadow: 2px 0 5px rgba(15, 23, 42, 0.08);
+            border-right: 1px solid #cbd5e1 !important;
+        }
+        .sticky-col-2 {
+            position: sticky !important;
+            left: 60px !important; /* 구분 컬럼 너비 60px 뒤에 고정 */
+            z-index: 20;
+            background-color: #ffffff !important;
+            box-shadow: 3px 0 6px rgba(15, 23, 42, 0.08);
+            border-right: 2px solid #94a3b8 !important; /* 스크롤 경계선 강조 */
+        }
+        .sticky-col-2-calc {
+            position: sticky !important;
+            left: 60px !important;
+            z-index: 20;
+            background-color: #f1f5f9 !important; /* 소계 행에 어울리는 색상 */
+            box-shadow: 3px 0 6px rgba(15, 23, 42, 0.08);
+            border-right: 2px solid #94a3b8 !important;
+        }
+
         /* 설정 테이블 모바일 크기 대응 */
         .rules-table th { background-color: #fffbeb; color: #b45309; padding: 10px; font-size: 11px; font-weight: 700; text-align: center; border: 1px solid #fde68a; }
         .rules-table td { padding: 6px; border: 1px solid #fde68a; white-space: nowrap; }
@@ -99,7 +126,7 @@
 </head>
 <body class="min-h-screen flex flex-col pb-24 select-none">
 
-    <!-- 상단 헤더 (모바일 컴팩트 스타일 및 심플한 타이틀 제공) -->
+    <!-- 상단 헤더 -->
     <header class="bg-white text-slate-800 sticky top-0 z-40 shadow-sm border-b border-slate-100 backdrop-blur-md bg-white/95">
         <div class="max-w-7xl mx-auto px-4 py-3.5 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -145,7 +172,6 @@
                     <table class="w-full text-xs text-left border-collapse min-w-[500px]">
                         <thead>
                             <tr class="bg-slate-50/50 text-slate-400 font-bold border-b border-slate-100">
-                                <!-- [요구사항 1] '급여마감월' 헤더명을 '급여지급월'로 변경 -->
                                 <th class="p-3">급여지급월</th>
                                 <th class="p-3">이름</th>
                                 <th class="p-3 text-right">실제급여</th>
@@ -174,7 +200,6 @@
             <!-- 예상/실제 토글 및 대상자 선택 -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
                 <div class="flex p-1 bg-slate-200/60 rounded-xl relative">
-                    <!-- 더 짙고 선명하게 개선된 2단 토글 버튼 (입력값 탭) -->
                     <button onclick="toggleDataType('estimated')" id="btn-data-est" class="flex-1 py-2.5 rounded-lg text-xs font-black transition-all duration-200 bg-slate-900 text-white shadow-sm font-extrabold">🔮 예상 데이터 입력</button>
                     <button onclick="toggleDataType('actual')" id="btn-data-act" class="flex-1 py-2.5 rounded-lg text-xs font-black transition-all duration-200 text-slate-500 hover:text-slate-800 font-semibold">💵 실제 데이터 입력</button>
                 </div>
@@ -193,16 +218,16 @@
                 </div>
 
                 <div class="p-4">
-                    <!-- 서브 탭 1: 실적 입력 그리드 -->
+                    <!-- 서브 탭 1: 실적 입력 그리드 (틀 고정이 추가됨) -->
                     <div id="input-section-perf" class="sub-content active overflow-x-auto custom-scrollbar -mx-4 px-4">
                         <table class="w-full text-xs excel-input-table min-w-[650px]">
                             <colgroup>
-                                <col width="70"><col width="110"><col width="95"><col width="95"><col width="95"><col width="95"><col width="95">
+                                <col width="60"><col width="110"><col width="95"><col width="95"><col width="95"><col width="95"><col width="95">
                             </colgroup>
                             <thead>
                                 <tr>
-                                    <th rowspan="2" class="border-b">구분</th>
-                                    <th rowspan="2" class="border-b">상세 항목</th>
+                                    <th rowspan="2" class="border-b sticky-col-1">구분</th>
+                                    <th rowspan="2" class="border-b sticky-col-2-calc">상세 항목</th>
                                     <th colspan="4" class="border-b bg-blue-50/40 text-blue-800 font-extrabold">(일반)</th>
                                     <th class="border-b bg-emerald-50/40 text-emerald-800 font-extrabold">(공동)</th>
                                 </tr>
@@ -283,7 +308,6 @@
         <div id="tab-expected" class="tab-content space-y-4">
             <div class="flex flex-col gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
                 <div class="flex p-1 bg-slate-200/60 rounded-xl relative">
-                    <!-- 더 짙고 선명하게 개선된 2단 토글 버튼 (예상vs실제 탭) -->
                     <button onclick="switchSheetSubTab('est_sheet')" id="btn-sheet-est" class="flex-1 py-2.5 rounded-lg text-xs font-black transition-all duration-200 bg-slate-900 text-white shadow-sm font-extrabold">🔮 예상급여</button>
                     <button onclick="switchSheetSubTab('act_sheet')" id="btn-sheet-act" class="flex-1 py-2.5 rounded-lg text-xs font-black transition-all duration-200 text-slate-500 hover:text-slate-800 font-semibold">💵 실제급여</button>
                 </div>
@@ -292,7 +316,7 @@
                     <select id="expected-agent-select" class="flex-1 border-0 bg-transparent text-xs font-extrabold outline-none text-slate-800 py-1.5" onchange="onExpectedAgentChanged()"></select>
                 </div>
             </div>
-            <!-- 급여 테이블 뷰 (모바일 디바이스 가로스크롤 대응) -->
+            <!-- 급여 테이블 뷰 -->
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto custom-scrollbar" id="sheet-container"></div>
         </div>
 
@@ -309,11 +333,8 @@
 
     <!-- 모바일 Bottom-Sheet 형태의 상담원 정보 설정 모달 -->
     <div id="agent-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs hidden z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-        <!-- 배경 클릭 시 모달 닫기 터치용 뒷배경 -->
         <div class="absolute inset-0" onclick="closeAgentModal()"></div>
-        <!-- 실제 콘텐츠 바디 (모바일에 최적화된 하단 슬라이드 시트 스타일) -->
         <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-50 z-10 bottom-sheet" id="modal-container">
-            <!-- 모바일 드래그 핸들 이미지 요소 -->
             <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto -mt-2 mb-2 sm:hidden"></div>
             <div class="flex justify-between items-center border-b pb-3">
                 <h3 class="font-extrabold text-base text-slate-800">📋 상담원 정보 설정</h3>
@@ -349,7 +370,7 @@
         </div>
     </div>
 
-    <!-- [요구사항 1] iframe 보안 규정 우회를 위한 커스텀 삭제 확인 모달 -->
+    <!-- iframe 보안 규정 우회를 위한 커스텀 삭제 확인 모달 -->
     <div id="delete-confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-xs w-full p-5 space-y-4 shadow-2xl border border-slate-50 text-center">
             <div class="text-rose-500 text-3xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -423,8 +444,8 @@
         ];
 
         let currentDataType = 'estimated'; 
-        let currentInputAgentId = 1;
-        let currentExpectedAgentId = 1;
+        let currentInputAgentId = null;
+        let currentExpectedAgentId = null;
         let currentSheetDataType = 'est_sheet';
         let pendingDeleteId = null; // 삭제 대기 대상 ID
 
@@ -433,8 +454,6 @@
             initializeGridDataStructures(); 
             document.getElementById('rule-attr-select').innerHTML = Object.keys(rules).map(k => `<option value="${k}">${k}</option>`).join('');
             
-            currentInputAgentId = 1;
-            currentExpectedAgentId = 1;
             renderAll();
         };
 
@@ -461,18 +480,9 @@
                 let isSelected = (yyyy === now.getFullYear() && (checkDate.getMonth() + 1) === (now.getMonth() + 1)) ? "selected" : "";
                 htmlOptions += `<option value="${valStr}" ${isSelected}>${yyyy}년 ${mm}월</option>`;
                 
-                monthlyData[valStr] = [
-                    { 
-                        id: 1, name: '홍길동', attribute: 'WSR', isTransfer: 'N', entryDate: '2023-01-15', center: '교차센터', room: '운영1실',
-                        estimated: { basePay: 1320000, dutyPay: 80000, leaderPay: 0, protectionPay: 0, grid: {}, closingRate: 0, renewRate: 0, jointRate: 0.5, deduction: 0 },
-                        actual: { basePay: 1320000, dutyPay: 80000, leaderPay: 0, protectionPay: 0, grid: {}, closingRate: 0, renewRate: 0, jointRate: 0.5, deduction: -50000 }
-                    },
-                    { 
-                        id: 2, name: '김철수', attribute: 'OSR혼합', isTransfer: 'N', entryDate: '2024-05-10', center: '직할센터', room: '운영2실',
-                        estimated: { basePay: 1320000, dutyPay: 80000, leaderPay: 0, protectionPay: 0, grid: {}, closingRate: 0, renewRate: 0, jointRate: 0.0, deduction: 0 },
-                        actual: { basePay: 1320000, dutyPay: 80000, leaderPay: 0, protectionPay: 0, grid: {}, closingRate: 0, renewRate: 0, jointRate: 0.0, deduction: 0 }
-                    }
-                ];
+                // [요구사항 1] 디폴트 기능 제거 - 빈 배열로 변경하여 사용자 등록을 유도
+                monthlyData[valStr] = [];
+                
                 checkDate.setMonth(checkDate.getMonth() + 1);
             }
             selectEl.innerHTML = htmlOptions;
@@ -636,8 +646,11 @@
             let list = getAgentsOfSelectedMonth();
             
             if (list.length > 0) {
-                if (!list.some(a => a.id == currentInputAgentId)) currentInputAgentId = list[0].id;
-                if (!list.some(a => a.id == currentExpectedAgentId)) currentExpectedAgentId = list[0].id;
+                if (!currentInputAgentId || !list.some(a => a.id == currentInputAgentId)) currentInputAgentId = list[0].id;
+                if (!currentExpectedAgentId || !list.some(a => a.id == currentExpectedAgentId)) currentExpectedAgentId = list[0].id;
+            } else {
+                currentInputAgentId = null;
+                currentExpectedAgentId = null;
             }
 
             renderAgentCards();
@@ -718,6 +731,17 @@
 
         function renderAgentCards() {
             let list = getAgentsOfSelectedMonth();
+            if (list.length === 0) {
+                document.getElementById('agent-list-container').innerHTML = `
+                    <div class="bg-white p-12 rounded-2xl border border-dashed border-slate-200 text-center text-slate-400 font-semibold space-y-2">
+                        <i class="fa-solid fa-user-group text-3xl text-slate-300 block mb-2"></i>
+                        지급월에 등록된 상담원이 존재하지 않습니다.
+                        <span class="text-xs text-slate-300 block font-normal">상단의 '+ 상담원 등록' 버튼을 눌러 새 상담원을 추가해 주세요.</span>
+                    </div>
+                `;
+                return;
+            }
+
             document.getElementById('agent-list-container').innerHTML = list.map(a => `
                 <div class="bg-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-xs">
                     <div class="space-y-1 text-xs">
@@ -728,7 +752,6 @@
                         </div>
                         <p class="text-slate-400 font-medium">입사: ${a.entryDate} | 소속: ${a.center} / ${a.room}</p>
                     </div>
-                    <!-- [요구사항 1] 삭제 버튼 추가 및 기능 맵핑 -->
                     <div class="flex items-center gap-1.5">
                         <button onclick="askDeleteAgent(${a.id})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 font-black px-3 py-2 rounded-xl border border-rose-200 active:scale-95 transition-all">삭제</button>
                         <button onclick="openAgentModal(${a.id})" class="text-xs bg-slate-50 hover:bg-slate-100 text-slate-600 font-black px-3 py-2 rounded-xl border border-slate-200 active:scale-95 transition-all">수정</button>
@@ -737,7 +760,6 @@
             `).join('');
         }
 
-        // [요구사항 1] 커스텀 확인 창 호출
         function askDeleteAgent(id) {
             pendingDeleteId = id;
             const deleteModal = document.getElementById('delete-confirm-modal');
@@ -768,9 +790,30 @@
         function renderInputSections() {
             let list = getAgentsOfSelectedMonth();
             const agent = list.find(a => a.id == currentInputAgentId);
-            if(!agent) { document.getElementById('input-grid-body').innerHTML = ""; return; }
-            const data = agent[currentDataType];
             
+            // [요구사항 1] 상담원이 없을 시 조기 리턴 및 친절한 안내 렌더링
+            if(!agent) { 
+                document.getElementById('input-grid-body').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="p-8 text-center text-slate-400 font-bold">
+                            <i class="fa-solid fa-user-slash text-xl text-slate-300 block mb-2"></i>
+                            정산 실적을 입력할 상담원이 없습니다.
+                            <br><span class="text-xs font-normal text-slate-300">하단 '상담원' 탭에서 신규 상담원을 먼저 등록해 주세요.</span>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('in-base-pay').value = "";
+                document.getElementById('in-duty-pay').value = "";
+                document.getElementById('in-leader-pay').value = "";
+                document.getElementById('in-protection-pay').value = "";
+                document.getElementById('in-close-rate').value = "";
+                document.getElementById('in-renew-rate').value = "";
+                document.getElementById('in-joint-rate').value = "";
+                document.getElementById('in-deduct-amount').value = "";
+                return; 
+            }
+            
+            const data = agent[currentDataType];
             if(!data.grid.ren_sub) data.grid.ren_sub = { non: 0, p50: 0, avg: 0, bad: 0, joint: 0 };
             
             ['non', 'p50', 'avg', 'bad', 'joint'].forEach(col => {
@@ -781,18 +824,21 @@
             let html = "";
             inputSchema.forEach((s, idx) => {
                 html += `<tr>`;
-                if(idx === 0) html += `<td class="text-center font-bold bg-slate-50 border-r text-slate-500">신규</td>`;
-                if(idx === 1) html += `<td rowspan="8" class="text-center font-bold bg-slate-50 border-r text-slate-500">갱신</td>`;
                 
+                // [요구사항 2] 틀 고정 CSS (.sticky-col-1) 적용 및 Rowspan 동적 처리
+                if(idx === 0) html += `<td class="text-center font-bold text-slate-500 border-r sticky-col-1">신규</td>`;
+                if(idx === 1) html += `<td rowspan="8" class="text-center font-bold text-slate-500 border-r sticky-col-1">갱신</td>`;
+                
+                // [요구사항 2] 상세 항목명 틀 고정 (.sticky-col-2 / .sticky-col-2-calc) 적용
                 if(s.isCalc) {
-                    html += `<td class="font-black bg-slate-50 pl-2 text-slate-700 text-center">${s.label}</td>`;
+                    html += `<td class="font-black pl-2 text-slate-700 text-center sticky-col-2-calc">${s.label}</td>`;
                     html += `<td class="text-right font-black bg-slate-50 pr-3 text-blue-600">${toCommaStr(data.grid[s.key].non)}</td>`;
                     html += `<td class="text-right font-black bg-slate-50 pr-3 text-blue-600">${toCommaStr(data.grid[s.key].p50)}</td>`;
                     html += `<td class="text-right font-black bg-slate-50 pr-3 text-blue-600">${toCommaStr(data.grid[s.key].avg)}</td>`;
                     html += `<td class="text-right font-black bg-slate-50 pr-3 text-blue-600">${toCommaStr(data.grid[s.key].bad)}</td>`;
                     html += `<td class="text-right font-black bg-slate-50 pr-3 text-blue-600">${toCommaStr(data.grid[s.key].joint)}</td>`;
                 } else {
-                    html += `<td class="font-bold bg-white pl-2 text-slate-600">${s.label}</td>`;
+                    html += `<td class="font-bold pl-2 text-slate-600 sticky-col-2">${s.label}</td>`;
                     html += `<td><input type="text" value="${toCommaStr(data.grid[s.key].non)}" oninput="formatCommaInput(this)" onchange="updateGridValue('${s.key}', 'non', this.value)"></td>`;
                     html += `<td><input type="text" value="${toCommaStr(data.grid[s.key].p50)}" oninput="formatCommaInput(this)" onchange="updateGridValue('${s.key}', 'p50', this.value)"></td>`;
                     html += `<td><input type="text" value="${toCommaStr(data.grid[s.key].avg)}" oninput="formatCommaInput(this)" onchange="updateGridValue('${s.key}', 'avg', this.value)"></td>`;
@@ -802,6 +848,8 @@
                 html += `</tr>`;
             });
             document.getElementById('input-grid-body').innerHTML = html;
+            
+            // 고정수당 및 변수들 채우기
             document.getElementById('in-base-pay').value = toCommaStr(data.basePay);
             document.getElementById('in-duty-pay').value = toCommaStr(data.dutyPay);
             document.getElementById('in-leader-pay').value = toCommaStr(data.leaderPay);
@@ -842,7 +890,6 @@
             currentInputAgentId = savedInputId;
             document.getElementById('input-agent-select').value = savedInputId;
             
-            // 모바일 최적화 얼럿 대체 메시지 박스
             showToastMessage("정산 지표가 성공적으로 저장 및 반영되었습니다.");
         }
 
@@ -1072,7 +1119,7 @@
                 ren_non_part = ren_self_non + (ren_wsr_non + ren_etc_non) * 0.5;
                 ren_bad_part = ren_self_bad + (ren_wsr_bad + ren_etc_bad) * 0.5;
 
-                // [요구사항 2] OSR혼합이면서 전환자 여부가 'Y'인 경우 갱신실적 합산 공식을 변경합니다.
+                // OSR혼합이면서 전환자 여부가 'Y'인 경우 갱신실적 합산 공식을 변경합니다.
                 if (agent.isTransfer === 'Y') {
                     renew_perf_join = (ren_self_non + ren_wsr_non + ren_etc_non) + (ren_self_bad + ren_wsr_bad + ren_etc_bad) * 0.5;
                 } else {
@@ -1135,7 +1182,6 @@
                 
                 let diffTime = prevMonthLastDate.getTime() - entryDate.getTime();
                 if (diffTime >= 0) {
-                    // 타임존 변경 및 썸머타임 오차 방지를 위해 Math.round 사용
                     diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1; 
                     let calcYears = diffDays / 365;
 
@@ -1203,7 +1249,18 @@
         function renderExpectedSheet() {
             let list = getAgentsOfSelectedMonth();
             const agent = list.find(a => a.id == currentExpectedAgentId);
-            if(!agent) { document.getElementById('sheet-container').innerHTML = "<p class='text-center p-8 text-slate-400 font-bold'>상담원을 등록 또는 선택해 주세요.</p>"; return; }
+            
+            // [요구사항 1] 상담원 비어있을 때 분기처리로 UI 크래시 방지 및 시각화 제공
+            if(!agent) { 
+                document.getElementById('sheet-container').innerHTML = `
+                    <div class="text-center p-12 text-slate-400 font-bold space-y-2 bg-slate-50 rounded-2xl border border-dashed">
+                        <i class="fa-solid fa-user-slash text-2xl text-slate-300 block"></i>
+                        조회할 수 있는 상담원이 등록되어 있지 않습니다.
+                        <span class="text-xs font-normal text-slate-300 block">상담원 탭에서 신규 정보를 추가한 후 정산서를 조회해 주세요.</span>
+                    </div>
+                `; 
+                return; 
+            }
 
             const mode = currentSheetDataType === 'est_sheet' ? 'estimated' : 'actual';
             const res = calculateLogic(agent, mode);
@@ -1341,7 +1398,6 @@
             }
             onModalAttrChanged();
             
-            // 모바일 바텀시트 열림 애니메이션 작동
             modal.classList.remove('hidden');
             setTimeout(() => {
                 container.classList.add('show');
@@ -1357,7 +1413,6 @@
             const modal = document.getElementById('agent-modal');
             const container = document.getElementById('modal-container');
             
-            // 바텀시트 닫힘 애니메이션 작동 후 숨김 처리
             container.classList.remove('show');
             setTimeout(() => {
                 modal.classList.add('hidden');
