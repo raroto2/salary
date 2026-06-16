@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>월별급여현황 시스템 v16.6</title>
+    <title>월별급여현황 시스템 v16.8</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -54,7 +54,7 @@
         .st-value-minus { text-align: right; font-weight: 800; color: #dc2626; font-size: 12px; background-color: #fef2f2; }
         .st-value-mix { text-align: right; font-weight: 800; color: #0d9488; font-size: 12px; background-color: #f0fdfa; }
 
-        /* [요구사항 2] 틀 고정을 지원하는 입력 테이블 디자인 */
+        /* 틀 고정을 지원하는 입력 테이블 디자인 */
         .excel-input-table { border-collapse: separate; border-spacing: 0; }
         .excel-input-table th { background-color: #f1f5f9; color: #475569; font-weight: 700; text-align: center; font-size: 11px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; white-space: nowrap; padding: 12px 6px; }
         .excel-input-table td { border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 6px; white-space: nowrap; height: 46px; vertical-align: middle; }
@@ -387,8 +387,8 @@
         let selectedYearTab = "2026"; 
         let monthlyData = {}; 
 
-        // 비즈니스 룰 및 매핑 데이터 구조
-        let rules = {
+        // 비즈니스 룰 및 매핑 데이터 구조 (기본값)
+        let defaultRules = {
             'WSR': {
                 total_perf: [
                     {t: -30000000, r: 2.00}, {t: 39999999, r: 2.00}, {t: 40000000, r: 3.00}, {t: 50000000, r: 3.60}, 
@@ -430,6 +430,8 @@
                 ]
             }
         };
+        
+        let rules = JSON.parse(JSON.stringify(defaultRules));
 
         const inputSchema = [
             { key: 'new_main', type: '신규', label: '신규' },
@@ -449,15 +451,59 @@
         let currentSheetDataType = 'est_sheet';
         let pendingDeleteId = null; // 삭제 대기 대상 ID
 
+        // 로컬 스토리지에 데이터를 백업하는 모듈식 세이브 함수
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('payroll_monthlyData_v16', JSON.stringify(monthlyData));
+                localStorage.setItem('payroll_rules_v16', JSON.stringify(rules));
+            } catch (e) {
+                console.error("로컬 스토리지 데이터 백업 중 오류 발생: ", e);
+            }
+        }
+
+        // 로컬 스토리지에서 데이터를 읽어와 복구하는 로드 함수
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem('payroll_monthlyData_v16');
+                const savedRules = localStorage.getItem('payroll_rules_v16');
+                
+                if (savedData) {
+                    monthlyData = JSON.parse(savedData);
+                } else {
+                    // 기기 백업 기록이 전혀 없는 초기 상태일 때만 빈 지급월 구조들을 생성함
+                    generateEmptyDefaultMonths();
+                }
+                
+                if (savedRules) {
+                    rules = JSON.parse(savedRules);
+                } else {
+                    rules = JSON.parse(JSON.stringify(defaultRules));
+                }
+            } catch (e) {
+                console.error("로컬 스토리지 복구 실패, 기본값으로 로드합니다.", e);
+                generateEmptyDefaultMonths();
+                rules = JSON.parse(JSON.stringify(defaultRules));
+            }
+        }
+
         window.onload = function() {
-            generateDynamicMonths(); 
+            // 콤보박스에 뿌릴 기본 년월 풀을 먼저 동적 드롭다운화
+            generateDynamicMonthDropdownOnly();
+            
+            // 로컬 스토리지에서 이전 정산 기록 전부 불러와 복구하기
+            loadFromLocalStorage();
+            
+            // 등록된 실적 인풋 구조 동적 매핑
             initializeGridDataStructures(); 
+            
+            // 기준값 설정 탭 콤보박스 기본 매핑
             document.getElementById('rule-attr-select').innerHTML = Object.keys(rules).map(k => `<option value="${k}">${k}</option>`).join('');
             
             renderAll();
         };
 
-        function generateDynamicMonths() {
+        // 지급월 셀렉트 드롭다운 옵션 태그만 초기화 생성하는 유틸
+        function generateDynamicMonthDropdownOnly() {
             const selectEl = document.getElementById('global-month-select');
             const now = new Date();
             let htmlOptions = "";
@@ -480,13 +526,35 @@
                 let isSelected = (yyyy === now.getFullYear() && (checkDate.getMonth() + 1) === (now.getMonth() + 1)) ? "selected" : "";
                 htmlOptions += `<option value="${valStr}" ${isSelected}>${yyyy}년 ${mm}월</option>`;
                 
-                // [요구사항 1] 디폴트 기능 제거 - 빈 배열로 변경하여 사용자 등록을 유도
-                monthlyData[valStr] = [];
-                
                 checkDate.setMonth(checkDate.getMonth() + 1);
             }
             selectEl.innerHTML = htmlOptions;
             selectedYearTab = String(now.getFullYear() < 2026 ? 2026 : now.getFullYear());
+        }
+
+        // 백업 데이터가 없을 때만 호출되어 지급월 데이터 구조 템플릿을 생성
+        function generateEmptyDefaultMonths() {
+            const now = new Date();
+            let startYr = 2026;
+            let startMn = 1; 
+
+            let endPeriod = new Date(now.getFullYear(), now.getMonth() + 12, 1);
+            let endYr = endPeriod.getFullYear();
+            let endMn = endPeriod.getMonth() + 1;
+
+            let checkDate = new Date(startYr, startMn - 1, 1);
+            let endDate = new Date(endYr, endMn - 1, 1);
+
+            while (checkDate <= endDate) {
+                let yyyy = checkDate.getFullYear();
+                let mm = String(checkDate.getMonth() + 1).padStart(2, '0');
+                let valStr = `${yyyy}-${mm}`;
+                
+                // 디폴트 상담원 홍길동/김철수를 완전히 제거한 빈 배열
+                monthlyData[valStr] = [];
+                
+                checkDate.setMonth(checkDate.getMonth() + 1);
+            }
         }
 
         function getSelectedMonth() { return document.getElementById('global-month-select').value; }
@@ -781,6 +849,10 @@
             let idx = list.findIndex(a => a.id == pendingDeleteId);
             if (idx > -1) {
                 list.splice(idx, 1);
+                
+                // 데이터 보존 및 기기 디스크 동기화
+                saveToLocalStorage();
+                
                 showToastMessage("상담원이 리스트에서 안전하게 삭제되었습니다.");
             }
             closeDeleteModal();
@@ -791,7 +863,6 @@
             let list = getAgentsOfSelectedMonth();
             const agent = list.find(a => a.id == currentInputAgentId);
             
-            // [요구사항 1] 상담원이 없을 시 조기 리턴 및 친절한 안내 렌더링
             if(!agent) { 
                 document.getElementById('input-grid-body').innerHTML = `
                     <tr>
@@ -825,11 +896,9 @@
             inputSchema.forEach((s, idx) => {
                 html += `<tr>`;
                 
-                // [요구사항 2] 틀 고정 CSS (.sticky-col-1) 적용 및 Rowspan 동적 처리
                 if(idx === 0) html += `<td class="text-center font-bold text-slate-500 border-r sticky-col-1">신규</td>`;
                 if(idx === 1) html += `<td rowspan="8" class="text-center font-bold text-slate-500 border-r sticky-col-1">갱신</td>`;
                 
-                // [요구사항 2] 상세 항목명 틀 고정 (.sticky-col-2 / .sticky-col-2-calc) 적용
                 if(s.isCalc) {
                     html += `<td class="font-black pl-2 text-slate-700 text-center sticky-col-2-calc">${s.label}</td>`;
                     html += `<td class="text-right font-black bg-slate-50 pr-3 text-blue-600">${toCommaStr(data.grid[s.key].non)}</td>`;
@@ -849,7 +918,6 @@
             });
             document.getElementById('input-grid-body').innerHTML = html;
             
-            // 고정수당 및 변수들 채우기
             document.getElementById('in-base-pay').value = toCommaStr(data.basePay);
             document.getElementById('in-duty-pay').value = toCommaStr(data.dutyPay);
             document.getElementById('in-leader-pay').value = toCommaStr(data.leaderPay);
@@ -866,6 +934,9 @@
             if(targetAgent) {
                 targetAgent[currentDataType].grid[rowKey][colKey] = getRawNum(val);
                 propagateToNextMonth(targetAgent);
+                
+                // 그리드 실적 실시간 타이핑 입력 사항도 로컬 백업 자동 연동
+                saveToLocalStorage();
             }
         }
 
@@ -884,6 +955,9 @@
             data.deduction = -Math.abs(getRawNum(document.getElementById('in-deduct-amount').value));
             
             propagateToNextMonth(targetAgent);
+            
+            // 변경 데이터 로컬 스토리지에 백업 영구 기록
+            saveToLocalStorage();
             
             const savedInputId = currentInputAgentId;
             renderAll();
@@ -1073,25 +1147,37 @@
             } else {
                 rules[attr][type][index].r = Number(val);
             }
+            saveToLocalStorage(); // 기준값 수정도 실시간 백업 자동 영구 반영
         }
 
         function updateCareerValue(attr, index, field, val) {
             rules[attr]['career'][index][field] = getRawNum(val);
+            saveToLocalStorage();
         }
 
         function addRuleRow(type) {
             const attr = document.getElementById('rule-attr-select').value;
             rules[attr][type].push({t:0, r:0.00});
             renderRules();
+            saveToLocalStorage();
         }
-        function deleteRule(attr, type, i) { rules[attr][type].splice(i,1); renderRules(); }
+        function deleteRule(attr, type, i) { 
+            rules[attr][type].splice(i,1); 
+            renderRules(); 
+            saveToLocalStorage();
+        }
 
         function addCareerRuleRow(attr) {
             if(!rules[attr]['career']) rules[attr]['career'] = [];
             rules[attr]['career'].push({t:0, y1:0, y2:0, y3:0, y5:0});
             renderRules();
+            saveToLocalStorage();
         }
-        function deleteCareerRule(attr, i) { rules[attr]['career'].splice(i,1); renderRules(); }
+        function deleteCareerRule(attr, i) { 
+            rules[attr]['career'].splice(i,1); 
+            renderRules(); 
+            saveToLocalStorage();
+        }
 
         function calculateLogic(agent, tab) {
             const d = agent[tab]; const g = d.grid;
@@ -1246,21 +1332,11 @@
             };
         }
 
+        // [복구 완료] '예상vs실제' 상세 정보 명세 테이블 렌더러 함수
         function renderExpectedSheet() {
             let list = getAgentsOfSelectedMonth();
             const agent = list.find(a => a.id == currentExpectedAgentId);
-            
-            // [요구사항 1] 상담원 비어있을 때 분기처리로 UI 크래시 방지 및 시각화 제공
-            if(!agent) { 
-                document.getElementById('sheet-container').innerHTML = `
-                    <div class="text-center p-12 text-slate-400 font-bold space-y-2 bg-slate-50 rounded-2xl border border-dashed">
-                        <i class="fa-solid fa-user-slash text-2xl text-slate-300 block"></i>
-                        조회할 수 있는 상담원이 등록되어 있지 않습니다.
-                        <span class="text-xs font-normal text-slate-300 block">상담원 탭에서 신규 정보를 추가한 후 정산서를 조회해 주세요.</span>
-                    </div>
-                `; 
-                return; 
-            }
+            if(!agent) { document.getElementById('sheet-container').innerHTML = "<p class='text-center p-8 text-slate-400 font-bold'>상담원을 등록 또는 선택해 주세요.</p>"; return; }
 
             const mode = currentSheetDataType === 'est_sheet' ? 'estimated' : 'actual';
             const res = calculateLogic(agent, mode);
@@ -1372,53 +1448,6 @@
             document.getElementById('sheet-container').innerHTML = html;
         }
 
-        function openAgentModal(id = null) {
-            const modal = document.getElementById('agent-modal');
-            const container = document.getElementById('modal-container');
-            
-            if(id) {
-                let list = getAgentsOfSelectedMonth();
-                const a = list.find(x => x.id == id);
-                if(!a) return;
-                document.getElementById('edit-agent-id').value = a.id;
-                document.getElementById('m-name').value = a.name;
-                document.getElementById('m-attr').value = a.attribute;
-                document.getElementById('m-transfer').value = a.isTransfer || 'N';
-                document.getElementById('m-date').value = a.entryDate;
-                document.getElementById('m-center').value = a.center;
-                document.getElementById('m-room').value = a.room;
-            } else {
-                document.getElementById('edit-agent-id').value = '';
-                document.getElementById('m-name').value = '';
-                document.getElementById('m-attr').value = 'WSR';
-                document.getElementById('m-transfer').value = 'N';
-                document.getElementById('m-date').value = '2025-01-01'; 
-                document.getElementById('m-center').value = '교차센터';
-                document.getElementById('m-room').value = '운영1실';
-            }
-            onModalAttrChanged();
-            
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                container.classList.add('show');
-            }, 10);
-        }
-
-        function onModalAttrChanged() {
-            const attr = document.getElementById('m-attr').value;
-            document.getElementById('modal-transfer-wrapper').classList.toggle('hidden', attr !== 'OSR혼합');
-        }
-        
-        function closeAgentModal() { 
-            const modal = document.getElementById('agent-modal');
-            const container = document.getElementById('modal-container');
-            
-            container.classList.remove('show');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
-        }
-
         function saveAgentData() {
             let list = getAgentsOfSelectedMonth();
             const editId = document.getElementById('edit-agent-id').value;
@@ -1453,6 +1482,10 @@
             
             propagateToNextMonth(targetObj);
             initializeGridDataStructures(); 
+            
+            // 신규 추가 및 정보 수정 시 로컬 영구 백업 연동
+            saveToLocalStorage();
+            
             closeAgentModal(); 
             renderAll();
         }
